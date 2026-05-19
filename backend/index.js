@@ -1,8 +1,3 @@
-// ======================================================
-// AI SMART COMPLAINT MANAGEMENT SYSTEM
-// COMPLETE MERN BACKEND - INDEX.JS
-// ======================================================
-
 require("dotenv").config();
 
 const express = require("express");
@@ -14,9 +9,9 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
 
-// ======================================================
-// MIDDLEWARE
-// ======================================================
+/* =========================================================
+   MIDDLEWARE
+========================================================= */
 
 app.use(express.json());
 
@@ -26,22 +21,22 @@ app.use(
   })
 );
 
-// ======================================================
-// ENV VARIABLES
-// ======================================================
+/* =========================================================
+   ENV VARIABLES
+========================================================= */
 
 const PORT = process.env.PORT || 5000;
 
 const JWT_SECRET =
-  process.env.JWT_SECRET || "supersecretjwtkey";
+  process.env.JWT_SECRET || "supersecretkey";
 
 const genAI = new GoogleGenerativeAI(
   process.env.GEMINI_API_KEY
 );
 
-// ======================================================
-// MONGODB CONNECTION
-// ======================================================
+/* =========================================================
+   MONGODB CONNECTION
+========================================================= */
 
 mongoose
   .connect(process.env.MONGO_URI)
@@ -52,9 +47,9 @@ mongoose
     console.log("MongoDB Error:", error.message);
   });
 
-// ======================================================
-// USER SCHEMA
-// ======================================================
+/* =========================================================
+   USER SCHEMA
+========================================================= */
 
 const userSchema = new mongoose.Schema(
   {
@@ -81,9 +76,9 @@ const userSchema = new mongoose.Schema(
 
 const User = mongoose.model("User", userSchema);
 
-// ======================================================
-// COMPLAINT SCHEMA
-// ======================================================
+/* =========================================================
+   COMPLAINT SCHEMA
+========================================================= */
 
 const complaintSchema = new mongoose.Schema(
   {
@@ -152,19 +147,23 @@ const Complaint = mongoose.model(
   complaintSchema
 );
 
-// ======================================================
-// GENERATE JWT TOKEN
-// ======================================================
+/* =========================================================
+   JWT TOKEN
+========================================================= */
 
 const generateToken = (id) => {
-  return jwt.sign({ id }, JWT_SECRET, {
-    expiresIn: "7d",
-  });
+  return jwt.sign(
+    { id },
+    JWT_SECRET,
+    {
+      expiresIn: "7d",
+    }
+  );
 };
 
-// ======================================================
-// AUTH MIDDLEWARE
-// ======================================================
+/* =========================================================
+   AUTH MIDDLEWARE
+========================================================= */
 
 const authMiddleware = async (
   req,
@@ -178,16 +177,17 @@ const authMiddleware = async (
     if (!authHeader) {
       return res.status(401).json({
         success: false,
-        message: "Access Denied. No Token.",
+        message: "Access Denied",
       });
     }
 
-    const token = authHeader.split(" ")[1];
+    const token =
+      authHeader.split(" ")[1];
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Invalid Token Format",
+        message: "Invalid Token",
       });
     }
 
@@ -207,9 +207,9 @@ const authMiddleware = async (
   }
 };
 
-// ======================================================
-// AI ANALYZER FUNCTION
-// ======================================================
+/* =========================================================
+   AI COMPLAINT ANALYZER
+========================================================= */
 
 const analyzeComplaintAI = async (
   complaintText
@@ -221,19 +221,21 @@ const analyzeComplaintAI = async (
       });
 
     const prompt = `
-You are an AI Complaint Analyzer.
+You are an AI complaint analyzer system.
 
-Analyze the complaint and return ONLY VALID JSON.
+Analyze the complaint carefully.
+
+Return ONLY VALID JSON.
 
 Complaint:
 ${complaintText}
 
-JSON Format:
+JSON FORMAT:
 {
   "priority":"High/Medium/Low",
   "department":"Department Name",
-  "summary":"Short Summary",
-  "response":"Professional response for user"
+  "summary":"Short complaint summary",
+  "response":"Professional response message for user"
 }
 `;
 
@@ -245,19 +247,17 @@ JSON Format:
 
     const text = response.text();
 
-    // SAFE JSON EXTRACTION
     const jsonMatch =
       text.match(/\{[\s\S]*\}/);
 
     if (!jsonMatch) {
       throw new Error(
-        "Invalid AI JSON Response"
+        "Invalid AI Response"
       );
     }
 
-    const parsedData = JSON.parse(
-      jsonMatch[0]
-    );
+    const parsedData =
+      JSON.parse(jsonMatch[0]);
 
     return parsedData;
   } catch (error) {
@@ -266,22 +266,24 @@ JSON Format:
       error.message
     );
 
-    // FALLBACK RESPONSE
     return {
       priority: "Medium",
+
       department:
         "General Department",
+
       summary:
         "Complaint received successfully.",
+
       response:
         "Thank you for your complaint. Our team will review it shortly.",
     };
   }
 };
 
-// ======================================================
-// HOME ROUTE
-// ======================================================
+/* =========================================================
+   HOME ROUTE
+========================================================= */
 
 app.get("/", (req, res) => {
   res.json({
@@ -291,9 +293,9 @@ app.get("/", (req, res) => {
   });
 });
 
-// ======================================================
-// REGISTER USER
-// ======================================================
+/* =========================================================
+   REGISTER
+========================================================= */
 
 app.post(
   "/api/auth/register",
@@ -304,8 +306,6 @@ app.post(
         email,
         password,
       } = req.body;
-
-      // VALIDATION
 
       if (
         !name ||
@@ -318,8 +318,6 @@ app.post(
             "All fields are required",
         });
       }
-
-      // CHECK USER
 
       const existingUser =
         await User.findOne({
@@ -334,12 +332,8 @@ app.post(
         });
       }
 
-      // HASH PASSWORD
-
       const hashedPassword =
         await bcrypt.hash(password, 10);
-
-      // CREATE USER
 
       const user = await User.create({
         name,
@@ -351,9 +345,11 @@ app.post(
         success: true,
         message:
           "User Registered Successfully",
+
         token: generateToken(
           user._id
         ),
+
         user,
       });
     } catch (error) {
@@ -365,9 +361,9 @@ app.post(
   }
 );
 
-// ======================================================
-// LOGIN USER
-// ======================================================
+/* =========================================================
+   LOGIN
+========================================================= */
 
 app.post(
   "/api/auth/login",
@@ -375,8 +371,6 @@ app.post(
     try {
       const { email, password } =
         req.body;
-
-      // CHECK EMAIL
 
       const user =
         await User.findOne({
@@ -390,8 +384,6 @@ app.post(
             "Invalid Email",
         });
       }
-
-      // CHECK PASSWORD
 
       const isMatch =
         await bcrypt.compare(
@@ -407,15 +399,15 @@ app.post(
         });
       }
 
-      // RESPONSE
-
       res.json({
         success: true,
         message:
           "Login Successful",
+
         token: generateToken(
           user._id
         ),
+
         user,
       });
     } catch (error) {
@@ -427,9 +419,9 @@ app.post(
   }
 );
 
-// ======================================================
-// ADD COMPLAINT
-// ======================================================
+/* =========================================================
+   ADD COMPLAINT
+========================================================= */
 
 app.post(
   "/api/complaints",
@@ -445,8 +437,6 @@ app.post(
         location,
       } = req.body;
 
-      // VALIDATION
-
       if (
         !name ||
         !email ||
@@ -458,11 +448,9 @@ app.post(
         return res.status(400).json({
           success: false,
           message:
-            "All complaint fields required",
+            "All fields required",
         });
       }
-
-      // EMAIL VALIDATION
 
       const emailRegex =
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -471,18 +459,18 @@ app.post(
         return res.status(400).json({
           success: false,
           message:
-            "Invalid Email Format",
+            "Invalid Email",
         });
       }
 
-      // AI ANALYSIS
+      /* ================= AI ANALYSIS ================= */
 
       const aiData =
         await analyzeComplaintAI(
           description
         );
 
-      // SAVE COMPLAINT
+      /* ================= STORE ================= */
 
       const complaint =
         await Complaint.create({
@@ -510,6 +498,7 @@ app.post(
         success: true,
         message:
           "Complaint Added Successfully",
+
         complaint,
       });
     } catch (error) {
@@ -521,9 +510,9 @@ app.post(
   }
 );
 
-// ======================================================
-// GET ALL COMPLAINTS
-// ======================================================
+/* =========================================================
+   GET ALL COMPLAINTS
+========================================================= */
 
 app.get(
   "/api/complaints",
@@ -537,7 +526,9 @@ app.get(
 
       res.json({
         success: true,
-        total: complaints.length,
+        total:
+          complaints.length,
+
         complaints,
       });
     } catch (error) {
@@ -549,9 +540,9 @@ app.get(
   }
 );
 
-// ======================================================
-// GET SINGLE COMPLAINT
-// ======================================================
+/* =========================================================
+   GET SINGLE COMPLAINT
+========================================================= */
 
 app.get(
   "/api/complaints/:id",
@@ -583,9 +574,9 @@ app.get(
   }
 );
 
-// ======================================================
-// SEARCH COMPLAINTS BY LOCATION
-// ======================================================
+/* =========================================================
+   SEARCH BY LOCATION
+========================================================= */
 
 app.get(
   "/api/complaints/search/location",
@@ -604,8 +595,6 @@ app.get(
 
       res.json({
         success: true,
-        results:
-          complaints.length,
         complaints,
       });
     } catch (error) {
@@ -617,9 +606,9 @@ app.get(
   }
 );
 
-// ======================================================
-// FILTER BY CATEGORY
-// ======================================================
+/* =========================================================
+   FILTER BY CATEGORY
+========================================================= */
 
 app.get(
   "/api/complaints/category/:category",
@@ -644,9 +633,9 @@ app.get(
   }
 );
 
-// ======================================================
-// UPDATE COMPLAINT STATUS
-// ======================================================
+/* =========================================================
+   UPDATE STATUS
+========================================================= */
 
 app.put(
   "/api/complaints/:id",
@@ -677,6 +666,7 @@ app.put(
         success: true,
         message:
           "Complaint Status Updated",
+
         complaint,
       });
     } catch (error) {
@@ -688,9 +678,9 @@ app.put(
   }
 );
 
-// ======================================================
-// DELETE COMPLAINT
-// ======================================================
+/* =========================================================
+   DELETE COMPLAINT
+========================================================= */
 
 app.delete(
   "/api/complaints/:id",
@@ -723,9 +713,9 @@ app.delete(
   }
 );
 
-// ======================================================
-// AI ANALYSIS API
-// ======================================================
+/* =========================================================
+   AI ANALYZER API
+========================================================= */
 
 app.post(
   "/api/ai/analyze",
@@ -760,9 +750,9 @@ app.post(
   }
 );
 
-// ======================================================
-// TEST ROUTE
-// ======================================================
+/* =========================================================
+   TEST ROUTE
+========================================================= */
 
 app.get("/api/test", (req, res) => {
   res.json({
@@ -772,9 +762,9 @@ app.get("/api/test", (req, res) => {
   });
 });
 
-// ======================================================
-// GLOBAL ERROR HANDLER
-// ======================================================
+/* =========================================================
+   GLOBAL ERROR HANDLER
+========================================================= */
 
 app.use((err, req, res, next) => {
   console.log(err.stack);
@@ -786,9 +776,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ======================================================
-// START SERVER
-// ======================================================
+/* =========================================================
+   START SERVER
+========================================================= */
 
 app.listen(PORT, () => {
   console.log(
